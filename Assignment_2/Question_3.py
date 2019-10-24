@@ -83,7 +83,24 @@ def gradient_descent(x,y,weights,lamb,step_size,epoch=100):
 	return weights
 
 # Return the list of error for different set of lambdas.
-def cross_validation_lamb(train_data,train_label,val_data,val_label,w,list_lambda,step_size,epoch=100):
+def cross_validation_lamb_lasso(train_data,train_label,val_data,val_label,w,list_lambda,epoch=100):
+	error_list=[]
+	current_cost=1000000
+	best_lambda=0.1
+	best_weights=w
+	for i in range(len(list_lambda)):
+		w = coordinate_descent(train_data,train_label,list_lambda[i],epoch)
+		temp_error = compute_error_r(val_data,val_label,w,list_lambda[i])
+		error_list.append(temp_error)
+		if temp_error < current_cost:
+			best_lambda=list_lambda[i]
+			best_weights=w
+			current_cost = temp_error
+	return error_list,best_lambda,best_weights
+
+
+# Return the list of error for different set of lambdas.
+def cross_validation_lamb_ridge(train_data,train_label,val_data,val_label,w,list_lambda,step_size,epoch=100):
 	error_list=[]
 	current_cost=1000000
 	best_lambda=0.1
@@ -95,6 +112,8 @@ def cross_validation_lamb(train_data,train_label,val_data,val_label,w,list_lambd
 		if temp_error < current_cost:
 			best_lambda=list_lambda[i]
 			best_weights=w
+			current_cost = temp_error
+		w = np.random.rand(100)
 	return error_list,best_lambda,best_weights
 
 # Computer error using loss function for closed form solution w_ml
@@ -144,25 +163,28 @@ if __name__ == "__main__":
 
 	
 	# Parameter Initialization	
-	epoch=500
-	step_size=0.01
+	epoch=100
+	step_size=0.005
 	batch_size=100
 	split_ratio=0.2
-	list_lambda = [0.01,0.07,0.2,0.5,0.9,1,1.5,1.8,2]
-
+	list_lambda_ridge = [0.01,0.04,0.07,0.2,0.5,0.7,0.9,1,1.3,1.5,1.8,2]
+	#list_lambda_lasso = [0.0001,0.0005,0.001,0.004,0.007,0.01,0.05,0.1,0.5,1,1.5,2]
+	#list_lambda_lasso = [0.001,0.004,0.007,0.01,0.05]
 	weights = np.random.rand(100)
 	
 	train_data,train_label,val_data,val_label = split_data(data,label,split_ratio)
 
 	
-	#error_list,best_lambda,w_r = cross_validation_lamb(train_data,train_label,val_data,val_label,weights,list_lambda,step_size,epoch)
+	#error_list,best_lambda,w_r = cross_validation_lamb_ridge(train_data,train_label,val_data,val_label,weights,list_lambda_ridge,step_size,epoch)
+	#error_list,best_lambda,w_r = cross_validation_lamb_lasso(train_data,train_label,val_data,val_label,weights,list_lambda_lasso,epoch)
 
+	#print(best_lambda)
 
-	#plot_cross_val_lambda(error_list,list_lambda,step_size,epoch)
+	#plot_cross_val_lambda(error_list,list_lambda_lasso,step_size,epoch)
 
-	#w_ml=closed_form_gd(train_data,train_label)
+	w_ml=closed_form_gd(train_data,train_label)
 	tw = coordinate_descent(train_data,train_label,0.007,epoch)
 	temp_error = compute_error_r(val_data,val_label,tw,0.007)
 	print(temp_error)
-	#print("Test Error, w_ml : ",compute_error_ml(test_data,test_label,w_ml))
-	#print("Test Error, w_r : ",compute_error_r(test_data,test_label,w_r,best_lambda))
+	print("Test Error, w_ml : ",compute_error_ml(test_data,test_label,w_ml))
+	print("Test Error, w_r : ",compute_error_r(test_data,test_label,tw,0.007))
