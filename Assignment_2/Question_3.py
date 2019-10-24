@@ -43,6 +43,28 @@ def closed_form_gd(x,y):
 	return np.dot(np.linalg.inv(np.dot(np.transpose(x),x)) , np.dot(np.transpose(x),y))
 
 
+# Soft Thresholding function
+def s_threshold(rho,l):
+	t=0.0
+	if rho>0.0 and l<abs(rho):
+		t = rho - l
+	elif rho<0.0 and l<abs(rho):
+		t=rho+l
+	return t	
+
+#Cordinate Descent
+def coordinate_descent(data,label,lamb,epoch=100):
+
+	para = np.zeros(data.shape[1]) # temp perameters to store the intermediate values of perameters.
+
+	for i in range(epoch):
+		for j in range(data.shape[1]):
+			temp_para = para.copy()      # Another set to keep other parameters constant while updating single parameter
+			temp_para[j] = 0.0
+			r = label - np.dot(data,temp_para)   #one step pediction error.	
+			para[j] = s_threshold( np.dot(data[:,j],r) , lamb*data.shape[0] ) / np.sum(data[:,j]**2)
+	return para
+
 # Gradient Descent for ridge regression
 def gradient_descent(x,y,weights,lamb,step_size,epoch=100):
 
@@ -122,7 +144,7 @@ if __name__ == "__main__":
 
 	
 	# Parameter Initialization	
-	epoch=100
+	epoch=500
 	step_size=0.01
 	batch_size=100
 	split_ratio=0.2
@@ -133,13 +155,14 @@ if __name__ == "__main__":
 	train_data,train_label,val_data,val_label = split_data(data,label,split_ratio)
 
 	
-	error_list,best_lambda,w_r = cross_validation_lamb(train_data,train_label,val_data,val_label,weights,list_lambda,step_size,epoch)
+	#error_list,best_lambda,w_r = cross_validation_lamb(train_data,train_label,val_data,val_label,weights,list_lambda,step_size,epoch)
 
 
-	plot_cross_val_lambda(error_list,list_lambda,step_size,epoch)
+	#plot_cross_val_lambda(error_list,list_lambda,step_size,epoch)
 
-	w_ml=closed_form_gd(train_data,train_label)
-
-
-	print("Test Error, w_ml : ",compute_error_ml(test_data,test_label,w_ml))
-	print("Test Error, w_r : ",compute_error_r(test_data,test_label,w_r,best_lambda))
+	#w_ml=closed_form_gd(train_data,train_label)
+	tw = coordinate_descent(train_data,train_label,0.007,epoch)
+	temp_error = compute_error_r(val_data,val_label,tw,0.007)
+	print(temp_error)
+	#print("Test Error, w_ml : ",compute_error_ml(test_data,test_label,w_ml))
+	#print("Test Error, w_r : ",compute_error_r(test_data,test_label,w_r,best_lambda))
