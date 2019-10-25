@@ -21,6 +21,7 @@ np.random.seed(123)
 
 def read_data(filename):
 	x = np.array(pd.read_csv(filename,header=None))
+	np.random.shuffle(x)
 	data = x[:,:-1]
 	label= x[:,-1]
 	del x
@@ -147,7 +148,7 @@ def plot_test_error(test_x,test_y,w_r,w_ml,best_lambda):
 def plot_cross_val_lambda(error,list_lambda,step_size,epoch):
 	plt.style.use('seaborn-whitegrid')
 	
-	plt.plot(list_lambda,error)
+	plt.plot(list_lambda,error,marker='o')
 	plt.title("Cross Validation for different valus of lambdas "+"step size:"+str(step_size) +" Epoch:"+str(epoch))
 	plt.xlabel("Lambda value")
 	plt.ylabel("Validation Error")
@@ -163,28 +164,28 @@ if __name__ == "__main__":
 
 	
 	# Parameter Initialization	
-	epoch=100
-	step_size=0.005
+	epoch=200
+	step_size=0.007
 	batch_size=100
 	split_ratio=0.2
 	list_lambda_ridge = [0.01,0.04,0.07,0.2,0.5,0.7,0.9,1,1.3,1.5,1.8,2]
-	#list_lambda_lasso = [0.0001,0.0005,0.001,0.004,0.007,0.01,0.05,0.1,0.5,1,1.5,2]
-	#list_lambda_lasso = [0.001,0.004,0.007,0.01,0.05]
+	list_lambda_lasso = [0.0001,0.0005,0.001,0.004,0.007,0.009,0.01,0.05]
+	#list_lambda_lasso = [0.001,0.004,0.007,0.009,0.01,0.05]
 	weights = np.random.rand(100)
 	
 	train_data,train_label,val_data,val_label = split_data(data,label,split_ratio)
 
 	
 	#error_list,best_lambda,w_r = cross_validation_lamb_ridge(train_data,train_label,val_data,val_label,weights,list_lambda_ridge,step_size,epoch)
-	#error_list,best_lambda,w_r = cross_validation_lamb_lasso(train_data,train_label,val_data,val_label,weights,list_lambda_lasso,epoch)
+	error_list,best_lambda,w_r = cross_validation_lamb_lasso(train_data,train_label,val_data,val_label,weights,list_lambda_lasso,epoch)
 
-	#print(best_lambda)
+	print(best_lambda)
 
-	#plot_cross_val_lambda(error_list,list_lambda_lasso,step_size,epoch)
+	plot_cross_val_lambda(error_list,list_lambda_lasso,step_size,epoch)
 
 	w_ml=closed_form_gd(train_data,train_label)
-	tw = coordinate_descent(train_data,train_label,0.007,epoch)
-	temp_error = compute_error_r(val_data,val_label,tw,0.007)
-	print(temp_error)
+	#tw = coordinate_descent(train_data,train_label,0.007,epoch)
+	#temp_error = compute_error_r(val_data,val_label,tw,0.007)
+	#print(temp_error)
 	print("Test Error, w_ml : ",compute_error_ml(test_data,test_label,w_ml))
-	print("Test Error, w_r : ",compute_error_r(test_data,test_label,tw,0.007))
+	print("Test Error, w_r : ",compute_error_r(test_data,test_label,w_r,best_lambda))
