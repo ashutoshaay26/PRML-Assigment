@@ -1,6 +1,7 @@
 import sys
 import os
-import re
+import re, string, unicodedata
+from bs4 import BeautifulSoup
 from operator import mul
 from functools import reduce
 
@@ -139,3 +140,37 @@ def get_spam_score(message, word_spamicities):
     prob_spam_inv = reduce(mul, [1 - x[1] for x in top_spamicities])
         
     return prob_spam / (prob_spam + prob_spam_inv)
+
+def strip_html(text):
+    soup = BeautifulSoup(text, "html.parser")
+    return soup.get_text()
+
+def remove_between_square_brackets(text):
+    return re.sub('\[[^]]*\]', '', text)
+
+def remove_words_contains_numbers(text):
+    return re.sub(r'\w*\d\w*', '', text).strip()
+
+def remove_punctuation(text):
+    result = text.translate(str.maketrans('', '', string.punctuation))
+    #result = text.translate(string.dir("",""), string.punctuation)
+    return result
+
+def remove_blankspaces(text):
+    result =  " ".join(text.split())
+    return result
+
+def denoise_text(text):
+    text = strip_html(text)
+    text = remove_between_square_brackets(text)
+    text = remove_punctuation(text)
+    text = remove_words_contains_numbers(text)
+    text = remove_blankspaces(text)
+    return text
+
+
+if __name__ == "__main__":
+    folder_name = "test"
+    emails = get_messages(folder_name)
+    #print(emails["email2.txt"])
+    print(denoise_text(emails["email2.txt"]))
