@@ -1,51 +1,94 @@
 import sys
 import os
+import numpy as np
 import re, string, unicodedata
+import pickle
+from os import listdir
+from os.path import isfile, join
 from bs4 import BeautifulSoup
 from operator import mul
 from functools import reduce
-
+from collections import Counter
 # Regex defining what to consider as a word
 word_regex = re.compile("[a-zA-Z']+(?:-[a-zA-Z']+)?")
 
-# Return a dict of messages with filenames for keys
-def get_messages(folder):
-    messages = {}
-    encoding = sys.stdout.encoding
-    filenames = list(os.walk(folder))[0][2]
-    
-    # Step through all files in folder
-    for filename in filenames:
-        path = folder + "/" + filename
-        
-        # Read file, ignoring invalid
-        with open(path, encoding=encoding, errors="ignore") as message_file:
-            # Add message to dict of messages
-            messages[filename] = message_file.read()
-    
-    return messages
+def save_obj(obj, name ):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+def load_obj(name ):
+    with open( name + '.pkl', 'rb') as f:
+        return pickle.load(f)
 
 
-def extract_features(mail_dir): 
-    files = [os.path.join(mail_dir,fi) for fi in os.listdir(mail_dir)]
-    features_matrix = np.zeros((len(files),3000))
-    docID = 0;
-    for fil in files:
-      with open(fil) as fi:
-        for i,line in enumerate(fi):
-          if i == 2:
-            words = line.split()
-            for word in words:
-              wordID = 0
-              for i,d in enumerate(dictionary):
+def extract_features(emails,dictionary,cnt): 
+    features_matrix = np.zeros((cnt,3000))
+    all_words = []
+    for ii in range(cnt):
+        words = emails[ii].split()
+        all_words += words
+        for word in all_words:
+            wordID = 0
+            for i,d in enumerate(dictionary):
                 if d[0] == word:
-                  wordID = i
-                  features_matrix[docID,wordID] = words.count(word)
-        docID = docID + 1     
+                    wordID = i
+                    features_matrix[ii,wordID] = all_words.count(word)
+                
     return features_matrix
 
 
+def make_Dictionary(emails,cnt):    
+    all_words = []       
+    for i in range(cnt):
+        words = emails[i].split()
+        all_words += words
+    dictionary = Counter(all_words)
+    list_to_remove = dictionary.keys()
+    
+    for item in list(list_to_remove):
+        if item.isalpha() == False: 
+            del dictionary[item]
+        elif len(item) == 1:
+            del dictionary[item]
+    dictionary = dictionary.most_common(3000)
+    
+    np.save('dict_enron.npy',dictionary) 
+    
+    return dictionary
+ 
 
+# Return a dict of messages with filenames for keys
+# Return a dict of messages with filenames for keys
+def get_messages(folder):
+    folder1 = folder+"/ham"
+    folder2 = folder+"/spam"
+    messages = {}
+    label={}
+    cnt=0
+    for folder in [folder1,folder2]:
+        encoding = sys.stdout.encoding
+        filenames = [f for f in listdir(folder) if isfile(join(folder, f))]
+        
+    # Step through all files in folder
+        for filename in filenames:
+            path = folder + "/" + filename
+        
+        # Read file, ignoring invalid
+            with open(path, encoding=encoding, errors="ignore") as message_file:
+            # Add message to dict of messages
+                messages[cnt] = message_file.read()
+                if folder == folder1:
+            	    label[cnt]=0
+                else:
+            	    label[cnt]=1
+            cnt+=1
+
+    return messages,label,cnt
+
+
+
+
+'''
 # Return a dict of dicts of word occurences in messages with filenames for keys
 def get_word_occurences(messages, phrase_length):
     word_occurences = {}
@@ -140,7 +183,7 @@ def get_spam_score(message, word_spamicities):
     prob_spam_inv = reduce(mul, [1 - x[1] for x in top_spamicities])
         
     return prob_spam / (prob_spam + prob_spam_inv)
-
+'''
 def strip_html(text):
     soup = BeautifulSoup(text, "html.parser")
     return soup.get_text()
@@ -160,17 +203,26 @@ def remove_blankspaces(text):
     result =  " ".join(text.split())
     return result
 
-def denoise_text(text):
-    text = strip_html(text)
-    text = remove_between_square_brackets(text)
-    text = remove_punctuation(text)
-    text = remove_words_contains_numbers(text)
-    text = remove_blankspaces(text)
-    return text
+def denoise_text(emails,cnt):
+    for i in range(cnt):
+        text = emails[i]
+        text = strip_html(text)
+        text = remove_between_square_brackets(text)
+        text = remove_punctuation(text)
+        text = remove_words_contains_numbers(text)
+        text = remove_blankspaces(text)
+        emails[i]=text
+    return emails
 
 
 if __name__ == "__main__":
-    folder_name = "test"
-    emails = get_messages(folder_name)
-    #print(emails["email2.txt"])
-    print(denoise_text(emails["email2.txt"]))
+    folder_name = 'enron1'
+    emails,label,cnt = get_messages(folder_name)
+    emails = denoise_text(emails,cnt)
+    #save_obj(emails,"messages") 
+    #save_obj(label,"label")
+
+    d = make_Dictionary(emails,cnt)
+    feature = extract_features(emails,d,cnt)
+    print(np.shape(feature))
+    np.save("fe_mat.npy",feature)
