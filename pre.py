@@ -3,14 +3,22 @@ import os
 import numpy as np
 import re, string, unicodedata
 import pickle
+import nltk
+from nltk.corpus import stopwords
 from os import listdir
 from os.path import isfile, join
 from bs4 import BeautifulSoup
 from operator import mul
 from functools import reduce
 from collections import Counter
+
+#nltk.download('stopwords')
+
 # Regex defining what to consider as a word
 word_regex = re.compile("[a-zA-Z']+(?:-[a-zA-Z']+)?")
+
+
+cachedStopWords = stopwords.words("english")
 
 def save_obj(obj, name ):
     with open(name + '.pkl', 'wb') as f:
@@ -23,16 +31,16 @@ def load_obj(name ):
 
 def extract_features(emails,dictionary,cnt): 
     features_matrix = np.zeros((cnt,3000))
-    all_words = []
     for ii in range(cnt):
+        print(ii)
         words = emails[ii].split()
-        all_words += words
-        for word in all_words:
+
+        for word in words:
             wordID = 0
             for i,d in enumerate(dictionary):
                 if d[0] == word:
                     wordID = i
-                    features_matrix[ii,wordID] = all_words.count(word)
+                    features_matrix[ii,wordID] = words.count(word)
                 
     return features_matrix
 
@@ -203,6 +211,14 @@ def remove_blankspaces(text):
     result =  " ".join(text.split())
     return result
 
+def lower(text):
+    return text.lower()
+
+def remove_stopwords(text):
+    result = ' '.join([word for word in text.split() if word not in cachedStopWords])
+    return result
+
+
 def denoise_text(emails,cnt):
     for i in range(cnt):
         text = emails[i]
@@ -211,6 +227,8 @@ def denoise_text(emails,cnt):
         text = remove_punctuation(text)
         text = remove_words_contains_numbers(text)
         text = remove_blankspaces(text)
+        text = lower(text)
+        text = remove_stopwords(text)
         emails[i]=text
     return emails
 
@@ -219,8 +237,8 @@ if __name__ == "__main__":
     folder_name = 'enron1'
     emails,label,cnt = get_messages(folder_name)
     emails = denoise_text(emails,cnt)
-    #save_obj(emails,"messages") 
-    #save_obj(label,"label")
+    save_obj(emails,"messages") 
+    save_obj(label,"label")
 
     d = make_Dictionary(emails,cnt)
     feature = extract_features(emails,d,cnt)
